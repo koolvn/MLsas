@@ -91,3 +91,5 @@ fabric.properties
 .idea/misc.xml
 .idea/modules.xml
 .idea/vcs.xml
+!/ftp_login.py
+.idea/webServers.xml
