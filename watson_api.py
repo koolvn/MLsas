@@ -18,9 +18,10 @@ def text_to_speech(text='Hello world', output_filename='hello_world.wav'):
             accept='audio/wav'
         )
         audio_file.write(synthesis.get_result().content)
+    return output_filename
 
 
-def speech_to_text(filename='hello_world.wav'):
+def speech_to_text(filename='hello_world.wav', output_txt_filename=None):
     """ Принимает на воход аудиофайл, возвращает объект с результатами и распознанный текст
     """
     auth = IAMAuthenticator('L2iDf0t1uz3jpwbZmxnJElH-cC92n9gYkwVW9Mii9Aac')
@@ -30,8 +31,13 @@ def speech_to_text(filename='hello_world.wav'):
     with open(PATH_TO_DATA + filename, 'rb') as input_audio:
         result = stt.recognize(audio=input_audio)
     recognized_text = result.result['results'][0]['alternatives'][0]['transcript']
+    if output_txt_filename:
+        with open(PATH_TO_DATA + output_txt_filename, 'w+') as text_file:
+            text_file.write(recognized_text)
+
     return result, recognized_text
 
 
-if __name__ == '__main__':
-    text_to_speech()
+# if __name__ == '__main__':
+    # text_to_speech()
+    # speech_to_text(filename='joke.wav', output_txt_filename='joke.txt')
