@@ -14,10 +14,14 @@ def text_to_speech(text='Hello world', output_filename='hello_world.wav'):
     with open(PATH_TO_DATA + output_filename, 'wb') as audio_file:
         synthesis = tts.synthesize(
             text=text,
-            voice='en-US_AllisonVoice',
+            voice='en-US_AllisonV3Voice',  # 'en-US_AllisonVoice',
             accept='audio/wav'
         )
         audio_file.write(synthesis.get_result().content)
+    output_txt_filename = output_filename.split('.')[0] + '.txt'
+    with open(PATH_TO_DATA + 'tts_' + output_txt_filename, 'w+') as text_file:
+        text_file.write(text)
+
     return output_filename
 
 
@@ -30,14 +34,22 @@ def speech_to_text(filename='hello_world.wav', output_txt_filename=None):
 
     with open(PATH_TO_DATA + filename, 'rb') as input_audio:
         result = stt.recognize(audio=input_audio)
-    recognized_text = result.result['results'][0]['alternatives'][0]['transcript']
-    if output_txt_filename:
-        with open(PATH_TO_DATA + output_txt_filename, 'w+') as text_file:
+
+    if len(result.result['results']) != 0:
+        recognized_text = result.result['results'][0]['alternatives'][0]['transcript']
+        if output_txt_filename:
+            with open(PATH_TO_DATA + 'stt_' + output_txt_filename, 'w+') as text_file:
+                text_file.write(recognized_text)
+
+        with open(PATH_TO_DATA + filename.split('.')[0] + '.json', 'w+') as json_file:
+            json_file.write(str(result))
+    else:
+        recognized_text = ''
+        with open(PATH_TO_DATA + 'empty_stt_' + output_txt_filename, 'w+') as text_file:
             text_file.write(recognized_text)
 
     return result, recognized_text
 
-
 # if __name__ == '__main__':
-    # text_to_speech()
-    # speech_to_text(filename='joke.wav', output_txt_filename='joke.txt')
+# text_to_speech()
+# speech_to_text(filename='joke.wav', output_txt_filename='joke.txt')
