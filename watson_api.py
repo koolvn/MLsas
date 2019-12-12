@@ -11,7 +11,7 @@ def text_to_speech(text='Hello world', output_filename='hello_world.wav'):
     tts = TextToSpeechV1(authenticator=auth)
     tts.set_service_url('https://stream-fra.watsonplatform.net/text-to-speech/api')
 
-    with open(PATH_TO_DATA + output_filename, 'wb') as audio_file:
+    with open(PATH_TO_DATA + 'tts_' + output_filename, 'wb') as audio_file:
         synthesis = tts.synthesize(
             text=text,
             voice='en-US_AllisonV3Voice',  # 'en-US_AllisonVoice',
