@@ -1,6 +1,6 @@
 import telebot
-from helpers import token, WEBHOOK_URL_BASE, WEBHOOK_URL_PATH, WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV, WEBHOOK_LISTEN, WEBHOOK_PORT
-# from telebot.types import Message
+from helpers import token, WEBHOOK_URL_BASE, WEBHOOK_URL_PATH, WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV, WEBHOOK_LISTEN, WEBHOOK_PORT, add_start_user
+from telebot.types import Message
 import logging
 import ssl
 from aiohttp import web
@@ -35,9 +35,19 @@ rus = re.compile("[а-яА-Я]+")  # нужно для проверки язык
 Vladimir = 208470137
 PATH_TO_DATA = './data/'
 
-bot.send_message(Vladimir, 'Starting...')
+# bot.send_message(Vladimir, 'Starting...')
+
+# HANDLERS
+
+# Commands handlers
+@bot.message_handler(commands=['start'])
+def start_bot(message: Message):
+    # print(message.json['from'])
+    # bot.send_message(message.chat.id, f'\nПривет, {message.chat.first_name}!', reply_markup=default_keyboard(message))
+    add_start_user(message)
 
 
+# Message type handlers
 @bot.message_handler(content_types=['audio', 'voice', 'document'])
 def handle_audio(message):
     file_type = None
