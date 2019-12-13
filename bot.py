@@ -1,12 +1,37 @@
 import telebot
+from helpers import token, WEBHOOK_URL_BASE, WEBHOOK_URL_PATH, WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV, WEBHOOK_LISTEN, WEBHOOK_PORT
 # from telebot.types import Message
+import logging
+import ssl
+from aiohttp import web
 import watson_api as wtsn
 import yandex_api as yndx
 import re
 
+
+logger = telebot.logger
+telebot.logger.setLevel(logging.INFO)
+bot = telebot.TeleBot(token)
+app = web.Application()
+
+
+# Process webhook calls
+async def handle(request):
+    if request.match_info.get('token') == bot.token:
+        request_body_dict = await request.json()
+        update = telebot.types.Update.de_json(request_body_dict)
+        bot.process_new_updates([update])
+        return web.Response()
+    else:
+        return web.Response(status=403)
+
+
+app.router.add_post('/{token}/', handle)
+
+################################# BOT LOGIC #######################################
+###################################################################################
 rus = re.compile("[а-яА-Я]+")  # нужно для проверки языка сообщения.
 
-bot = telebot.TeleBot('928914414:AAHsTPLisafVFCEuaYTVJ10rYilrzzW4ADc')
 Vladimir = 208470137
 PATH_TO_DATA = './data/'
 
@@ -52,4 +77,24 @@ def handle_text(message):
     bot.send_voice(message.chat.id, open(PATH_TO_DATA + 'tts_' + audio_file, 'rb'))
 
 
-bot.polling(none_stop=True)
+############################### END OF BOT LOGIC ###################################
+####################################################################################
+
+# Remove webhook, it fails sometimes the set if there is a previous webhook
+bot.remove_webhook()
+
+# Set webhook
+bot.set_webhook(url=WEBHOOK_URL_BASE + WEBHOOK_URL_PATH,
+                certificate=open(WEBHOOK_SSL_CERT, 'r'))
+
+# Build ssl context
+context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+context.load_cert_chain(WEBHOOK_SSL_CERT, WEBHOOK_SSL_PRIV)
+
+# Start web-server (aiohttp)
+web.run_app(
+    app,
+    host=WEBHOOK_LISTEN,
+    port=WEBHOOK_PORT,
+    ssl_context=context,
+)
