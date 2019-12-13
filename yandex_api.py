@@ -8,7 +8,7 @@ def text_to_speech(text='Hello world', output_filename='hello_world.ogg', params
     """ Принимает на вход текст и имя файла, в который будет сохранён результат синтеза
         так же можно передать любые параметры API Yandex'а в форме словаря
     """
-    auth = "AQVN0E-Zv9fYT3gJA5Dzq7SkP_FaqP-sMPDvy27u"
+    auth = "AQVN1yLPIdLhSUMQOFbvGUmnvOTigkRXuOpx0iLh"
     url = 'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize'
     payload = {'lang': 'ru-RU', 'text': text, 'voice': 'filipp'}
     if params:
@@ -35,7 +35,7 @@ def speech_to_text(input_file: str, output_filename: str):
     """ Принимает на вход имя звукового файла, который нужно распознать
         возвращает распознанный текст и файл с именем начинающимся на stt_
     """
-    auth = "AQVNyRWJE7oKBFoDKkiH8IMxOej-dJzyX1_3Lf3L"
+    auth = "AQVN1yLPIdLhSUMQOFbvGUmnvOTigkRXuOpx0iLh"
     url = 'https://tts.api.cloud.yandex.net/speech/v1/stt:recognize?topic=general&lang=ru-RU'
 
     with open(PATH_TO_DATA + input_file, "rb") as f:

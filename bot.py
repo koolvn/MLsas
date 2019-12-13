@@ -58,7 +58,7 @@ def handle_audio(message):
     elif message.audio:
         file_type = 'audio'
     else:
-        print(message)
+        print('Message type unknown', message)
 
     bot.send_message(message.chat.id, 'Converting to text')
     file_id = message.json[file_type]['file_id']
