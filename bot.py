@@ -35,7 +35,7 @@ rus = re.compile("[а-яА-Я]+")  # нужно для проверки язык
 Vladimir = 208470137
 PATH_TO_DATA = './data/'
 
-# bot.send_message(Vladimir, 'Starting...')
+bot.send_message(Vladimir, 'Starting...')
 
 # HANDLERS
 
