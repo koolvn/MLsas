@@ -25,14 +25,14 @@ def text_to_speech(text='Hello world', output_filename='hello_world.wav'):
     return output_filename
 
 
-def speech_to_text(filename='hello_world.wav', output_txt_filename=None):
+def speech_to_text(input_file='hello_world.wav', output_txt_filename=None):
     """ Принимает на воход аудиофайл, возвращает объект с результатами и распознанный текст
     """
     auth = IAMAuthenticator('L2iDf0t1uz3jpwbZmxnJElH-cC92n9gYkwVW9Mii9Aac')
     stt = SpeechToTextV1(authenticator=auth)
     stt.set_service_url('https://stream-fra.watsonplatform.net/speech-to-text/api')
 
-    with open(PATH_TO_DATA + filename, 'rb') as input_audio:
+    with open(PATH_TO_DATA + input_file, 'rb') as input_audio:
         result = stt.recognize(audio=input_audio)
 
     if len(result.result['results']) != 0:
@@ -41,7 +41,7 @@ def speech_to_text(filename='hello_world.wav', output_txt_filename=None):
             with open(PATH_TO_DATA + 'stt_' + output_txt_filename, 'w+') as text_file:
                 text_file.write(recognized_text)
 
-        with open(PATH_TO_DATA + filename.split('.')[0] + '.json', 'w+') as json_file:
+        with open(PATH_TO_DATA + input_file.split('.')[0] + '.json', 'w+') as json_file:
             json_file.write(str(result))
     else:
         recognized_text = ''

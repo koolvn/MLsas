@@ -64,12 +64,11 @@ def handle_audio(message):
     file_id = message.json[file_type]['file_id']
     received_file_path = bot.get_file(file_id).file_path
     filename = received_file_path.split('/')[1]
-
     with open(PATH_TO_DATA + filename, 'w+b') as file:
         file.write(bot.download_file(received_file_path))
 
-    result, recognized_text = wtsn.speech_to_text(filename=filename, output_txt_filename=filename.split('.')[0] + '.txt')
-
+    # result, recognized_text = wtsn.speech_to_text(input_file=filename, output_txt_filename=filename.split('.')[0] + '.txt')
+    result, recognized_text = yndx.speech_to_text(input_file=filename, output_filename=filename.split('.')[0] + '.txt')
     if recognized_text:
         bot.send_message(message.chat.id, recognized_text)
     else:
@@ -80,7 +79,7 @@ def handle_audio(message):
 def handle_text(message):
     bot.send_message(message.chat.id, 'Converting to speech')
     if rus.match(message.text):
-        audio_file = yndx.text_to_speech(text=message.text, output_filename=str(message.message_id) + '.ogg', output_path=PATH_TO_DATA)
+        audio_file = yndx.text_to_speech(text=message.text, output_filename=str(message.message_id) + '.ogg')
     else:
         audio_file = wtsn.text_to_speech(text=message.text, output_filename=str(message.message_id) + '.ogg')
 
