@@ -2,15 +2,16 @@ import requests
 import json
 
 PATH_TO_DATA = './data/'
+TOKEN = 'AQVNwrQZOHMzw0bVvVXR75_p6dY8JeEWe7uVOh3L'
 
 
 def text_to_speech(text='Hello world', output_filename='hello_world.ogg', params=None):
     """ Принимает на вход текст и имя файла, в который будет сохранён результат синтеза
         так же можно передать любые параметры API Yandex'а в форме словаря
     """
-    auth = "AQVN1yLPIdLhSUMQOFbvGUmnvOTigkRXuOpx0iLh"
+    auth = TOKEN
     url = 'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize'
-    payload = {'lang': 'ru-RU', 'text': text, 'voice': 'filipp'}
+    payload = {'lang': 'ru-RU', 'ssml': f'<speak>{text}</speak>', 'voice': 'filipp', 'emotion': 'evil', 'speed': '0.85'}
     if params:
         payload.update(params)
 
@@ -35,7 +36,7 @@ def speech_to_text(input_file: str, output_filename: str):
     """ Принимает на вход имя звукового файла, который нужно распознать
         возвращает распознанный текст и файл с именем начинающимся на stt_
     """
-    auth = "AQVN1yLPIdLhSUMQOFbvGUmnvOTigkRXuOpx0iLh"
+    auth = TOKEN
     url = 'https://tts.api.cloud.yandex.net/speech/v1/stt:recognize?topic=general&lang=ru-RU'
 
     with open(PATH_TO_DATA + input_file, "rb") as f:
