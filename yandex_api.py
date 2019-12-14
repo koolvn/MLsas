@@ -11,7 +11,7 @@ def text_to_speech(text='Hello world', output_filename='hello_world.ogg', params
     """
     auth = TOKEN
     url = 'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize'
-    payload = {'lang': 'ru-RU', 'ssml': f'<speak>{text}</speak>', 'voice': 'filipp', 'emotion': 'evil', 'speed': '0.85'}
+    payload = {'lang': 'ru-RU', 'ssml': f'<speak>{text}</speak>', 'voice': 'filipp', 'emotion': 'good', 'speed': '0.85'}
     if params:
         payload.update(params)
 
@@ -32,13 +32,12 @@ def text_to_speech(text='Hello world', output_filename='hello_world.ogg', params
     return output_filename
 
 
-def speech_to_text(input_file: str, output_filename: str):
+def speech_to_text(input_file: str, output_filename: str, stt_params=['topic=general', 'lang=ru-RU']):
     """ Принимает на вход имя звукового файла, который нужно распознать
         возвращает распознанный текст и файл с именем начинающимся на stt_
     """
     auth = TOKEN
-    url = 'https://tts.api.cloud.yandex.net/speech/v1/stt:recognize?topic=general&lang=ru-RU'
-
+    url = f'https://tts.api.cloud.yandex.net/speech/v1/stt:recognize?{"&".join(stt_params)}'
     with open(PATH_TO_DATA + input_file, "rb") as f:
         data = f.read()
 
