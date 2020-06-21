@@ -9,7 +9,7 @@ Conflicts=getty@tty1.service
 Type=simple
 User=vladimir
 WorkingDirectory=/home/MLsas/
-ExecStart=/home/vladimir/miniconda3/bin/python /home/MLsas/bot.py
+ExecStart=/home/vladimir/miniconda3/bin/python /home/MLsas/bot_polling.py
 StandardInput=tty-force
 
 [Install]
