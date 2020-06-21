@@ -64,19 +64,20 @@ bot.send_message(Vladimir, 'Starting...')
 # Commands handlers
 @bot.message_handler(commands=['start'])
 def start_bot(message: Message):
-    print('New user!')
-    print(message.json['from'])
+    print(f'/start from id: {message.from_user.id}')
     bot.send_message(message.chat.id, f'\nПривет, {message.chat.first_name}!'
-                                      f'\nТы можешь общаться со мной голосовыми'
-                                      f' или текстовыми сообщениями',
+                                      f'\nТы можешь отправить мне текстовые или голосовые сообщения',
                      reply_markup=default_keyboard())
     add_start_user(message)
 
 
 # Message type handlers
 @bot.message_handler(content_types=['audio', 'voice'])
-def handle_audio(message):
-    print(f'Received:{message}')
+def handle_audio(message: Message):
+    print(f'Received {message.content_type}'
+          f' from {message.from_user.first_name}'
+          f' @{message.from_user.username}'
+          f' ({message.from_user.id})')
     file_type = None
     if message.voice:
         file_type = 'voice'
@@ -92,9 +93,8 @@ def handle_audio(message):
     with open(PATH_TO_DATA + filename, 'w+b') as file:
         file.write(bot.download_file(received_file_path))
 
-    # result, recognized_text = wtsn.speech_to_text(input_file=filename,
-    #                                               output_txt_filename=filename.split('.')[0] + '.txt')
-    result, recognized_text = yndx.speech_to_text(input_file=filename, output_filename=filename.split('.')[0] + '.txt')
+    result, recognized_text = yndx.speech_to_text(input_file=filename,
+                                                  output_filename=filename.split('.')[0] + '.txt')
     if recognized_text:
         bot.send_message(message.chat.id, recognized_text)
     else:
@@ -103,7 +103,11 @@ def handle_audio(message):
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def handle_text(message):
-    print(f'Received:{message}')
+    print(f'Received {message.content_type}'
+          f' from {message.from_user.first_name}'
+          f' @{message.from_user.username}'
+          f' ({message.from_user.id})')
+
     bot.send_message(message.chat.id, 'Converting to speech', reply_markup=markup_keyboard())
     filename = datetime.now().strftime("%d-%b-%H-%M") + '-from-' + str(message.chat.id) + '.ogg'
 
