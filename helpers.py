@@ -2,12 +2,12 @@ import pandas as pd
 
 token = '928914414:AAHsTPLisafVFCEuaYTVJ10rYilrzzW4ADc'
 # Telegram WebHooks
-WEBHOOK_HOST = '176.53.161.37'
+WEBHOOK_HOST = '212.33.245.52'
 WEBHOOK_PORT = 8443  # 443, 80, 88 or 8443 (port need to be 'open')
 WEBHOOK_LISTEN = '0.0.0.0'  # In some VPS you may need to put here the IP addr
 
-WEBHOOK_SSL_CERT = '/home/MLsas/certificates/url_cert.pem'  # Path to the ssl certificate
-WEBHOOK_SSL_PRIV = '/home/MLsas/certificates/url_private.key'  # Path to the ssl private key
+WEBHOOK_SSL_CERT = './cert/webhook_cert.pem'  # Path to the ssl certificate
+WEBHOOK_SSL_PRIV = './cert/webhook_pkey.pem'  # Path to the ssl private key
 
 # Quick'n'dirty SSL certificate generation:
 #
@@ -28,7 +28,7 @@ def add_start_user(message):
     user_details['link_source'] = message.text.split()[1] if len(message.text.split()) > 1 else None
     start_storage = pd.read_csv('tg_users.csv', index_col='index')
     users_list = list(start_storage['id'])
-    print(user_details)
+    print('New start click heard\nUser:\n', user_details)
 
     if 'first_name' not in user_details.keys():
         user_details['first_name'] = None

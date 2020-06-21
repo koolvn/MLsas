@@ -1,13 +1,15 @@
 from ibm_watson import TextToSpeechV1, SpeechToTextV1
 from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 
+from _secret import ibm_token
+
 PATH_TO_DATA = './data/'
+API_TOKEN = IAMAuthenticator(ibm_token)
 
 
-def text_to_speech(text='Hello world', output_filename='hello_world.wav'):
+def text_to_speech(text='Hello world', output_filename='hello_world.wav', auth=API_TOKEN):
     """ Принимает на вход текст и имя файла, в который будет сохранён результат синтеза
     """
-    auth = IAMAuthenticator("PlkSiy9TLsDCvxHjjLnQ7dqlTkg1IaSynAGmj9AO4nuU")
     tts = TextToSpeechV1(authenticator=auth)
     tts.set_service_url('https://stream-fra.watsonplatform.net/text-to-speech/api')
 
@@ -25,10 +27,10 @@ def text_to_speech(text='Hello world', output_filename='hello_world.wav'):
     return output_filename
 
 
-def speech_to_text(input_file='hello_world.wav', output_txt_filename=None):
+def speech_to_text(input_file='hello_world.wav', output_txt_filename=None, auth=API_TOKEN):
     """ Принимает на воход аудиофайл, возвращает объект с результатами и распознанный текст
     """
-    auth = IAMAuthenticator('L2iDf0t1uz3jpwbZmxnJElH-cC92n9gYkwVW9Mii9Aac')
+
     stt = SpeechToTextV1(authenticator=auth)
     stt.set_service_url('https://stream-fra.watsonplatform.net/speech-to-text/api')
 
@@ -49,7 +51,3 @@ def speech_to_text(input_file='hello_world.wav', output_txt_filename=None):
             text_file.write(recognized_text)
 
     return result, recognized_text
-
-# if __name__ == '__main__':
-# text_to_speech()
-# speech_to_text(filename='joke.wav', output_txt_filename='joke.txt')
