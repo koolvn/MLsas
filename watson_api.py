@@ -16,7 +16,7 @@ def text_to_speech(text='Hello world', output_filename='hello_world.wav', auth=A
     with open(PATH_TO_DATA + 'tts_' + output_filename, 'wb') as audio_file:
         synthesis = tts.synthesize(
             text=text,
-            voice='en-US_AllisonV3Voice',  # 'en-US_AllisonVoice',
+            voice='en-US_MichaelV3Voice',  # 'en-US_AllisonVoice',
             accept='audio/wav'
         )
         audio_file.write(synthesis.get_result().content)
