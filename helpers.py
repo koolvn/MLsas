@@ -1,8 +1,9 @@
 import pandas as pd
 
-token = '928914414:AAHsTPLisafVFCEuaYTVJ10rYilrzzW4ADc'
 # Telegram WebHooks
-WEBHOOK_HOST = '212.33.245.52'
+from _secret import bot_token
+
+WEBHOOK_HOST = '127.0.0.1'
 WEBHOOK_PORT = 8443  # 443, 80, 88 or 8443 (port need to be 'open')
 WEBHOOK_LISTEN = '0.0.0.0'  # In some VPS you may need to put here the IP addr
 
@@ -18,7 +19,7 @@ WEBHOOK_SSL_PRIV = './cert/webhook_pkey.pem'  # Path to the ssl private key
 # with the same value in you put in WEBHOOK_HOST
 
 WEBHOOK_URL_BASE = "https://{}:{}".format(WEBHOOK_HOST, WEBHOOK_PORT)
-WEBHOOK_URL_PATH = "/{}/".format(token)
+WEBHOOK_URL_PATH = "/{}/".format(bot_token)
 
 
 def add_start_user(message):

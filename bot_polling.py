@@ -38,19 +38,6 @@ def markup_keyboard():
     return keyboard
 
 
-# def sign_up_keyboard(message, phone_number=None):
-#     keyboard = types.ReplyKeyboardMarkup()
-#     if phone_number is None:
-#         phone_btn = types.KeyboardButton('Продолжить регистрацию', request_contact=True)
-#         keyboard.add(phone_btn)
-#     if message.from_user.id in get_users_dict('telegram_users').keys():
-#         return default_keyboard(message)
-#     stop_reg = types.KeyboardButton('Прервать регистрацию')
-#     keyboard.add(stop_reg)
-#
-#     return keyboard
-
-
 def settings_keyboard():
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton('Добавить 🚗', callback_data='add_car_for_check'))
