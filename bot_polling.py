@@ -22,7 +22,8 @@ bot = telebot.TeleBot(API_TOKEN)
 # Keyboards
 def default_keyboard():
     keyboard = telebot.types.InlineKeyboardMarkup()
-    btn_1 = types.InlineKeyboardButton(text='Привет!', callback_data='btn_1')
+    btn_1 = types.InlineKeyboardButton(text='SSML?',
+                                       url='https://cloud.yandex.ru/docs/speechkit/tts/ssml')
     btn_2 = types.InlineKeyboardButton('Расскажи, что умеешь', callback_data='btn_2')
     btn_3 = types.InlineKeyboardButton('Настройки', callback_data='btn_3')
     keyboard.row_width = 2
@@ -32,7 +33,7 @@ def default_keyboard():
 
 def markup_keyboard():
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.row('Привет!')
+    keyboard.row('/start')
     keyboard.row('Что этот бот умеет')
     keyboard.row('Настройки')
     return keyboard
