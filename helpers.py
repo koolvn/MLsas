@@ -26,7 +26,7 @@ def add_start_user(message):
     """ Записывает данные пользователей, нажавших старт """
 
     user_details = message.json['from']
-    user_details['link_source'] = message.text.split()[1] if len(message.text.split()) > 1 else None
+    user_details['link_source'] = message.text.split()[1] if len(message.text.split()) > 1 else 'no link'
     start_storage = pd.read_csv('tg_users.csv', index_col='index')
     users_list = list(start_storage['id'])
     print('New start click heard\nUser:\n', user_details)

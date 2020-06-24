@@ -1,6 +1,6 @@
 import telebot
 from telebot import types
-from telebot.types import Message, CallbackQuery
+from telebot.types import Message, CallbackQuery, User
 import watson_api as wtsn
 import yandex_api as yndx
 import re
@@ -14,29 +14,44 @@ API_TOKEN = bot_token
 
 bot = telebot.TeleBot(API_TOKEN)
 
-
 # bot.delete_webhook()
-
+#######################################################################
 ############################# BOT LOGIC ###############################
+#######################################################################
+
+rus = re.compile("[а-яА-Я]+")  # нужно для проверки языка сообщения.
+
+Vladimir = 208470137
+PATH_TO_DATA = './data/'
+
+default_params = {'lang': 'ru-RU',
+                  'voice': 'filipp'}
+# Подробнее здесь https://cloud.yandex.ru/docs/speechkit/tts/request
+params = None
+voices = {'Филипп': 'filipp', 'Омаж': 'omazh', 'Захар': 'zahar', 'Эрмиль': 'ermil',
+          'Оксана': 'oksana', 'Женя': 'jane', 'Алёна': 'alena'}
+inv_voices = {v: k for k, v in voices.items()}
+
+you_can_help = """
+Можешь поддержать проект чеканной монетой или принять участие в разработке
+\nСо Сбербанка на Яндекс\.Деньги без комиссии
+\n[Яндекс\.Деньги: 410014485115217](https://money.yandex.ru/to/410014485115217)
+\nАльфа Банк: 5559 4937 1870 2583
+"""
+user_list = []
+bot.send_message(Vladimir, 'Starting...')
+
 
 # Keyboards
 def default_keyboard():
     keyboard = telebot.types.InlineKeyboardMarkup()
     btn_1 = types.InlineKeyboardButton(text='Что такое SSML?',
                                        url='https://cloud.yandex.ru/docs/speechkit/tts/ssml')
-    btn_2 = types.InlineKeyboardButton('Расскажи, что умеешь', callback_data='btn_2')
+    btn_2 = types.InlineKeyboardButton('Расскажи, что умеешь', callback_data='about')
     btn_3 = types.InlineKeyboardButton('Настройки', callback_data='settings')
+    btn_4 = types.InlineKeyboardButton('Помощь', callback_data='help')
     keyboard.row_width = 2
-    keyboard.add(btn_1, btn_2, btn_3)
-    return keyboard
-
-
-def markup_keyboard():
-    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True,
-                                                 one_time_keyboard=True)
-    keyboard.row('/start', '/help')
-    keyboard.row('Настройки')
-    # keyboard.row('Скрыть')
+    keyboard.add(btn_1, btn_2, btn_3, btn_4)
     return keyboard
 
 
@@ -49,9 +64,14 @@ def settings_keyboard():
 
 
 def voices_keyboard():
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    keyboard.row('Филипп', 'Захар', 'Эрмиль')
-    keyboard.row('Оксана', 'Женя', 'Алёна', 'Омаж')
+    keyboard = types.InlineKeyboardMarkup()
+    keyboard.row(*[types.InlineKeyboardButton(name,
+                                              callback_data=f'{name}') for name in
+                   ['Филипп', 'Захар', 'Эрмиль']])
+    keyboard.row(*[types.InlineKeyboardButton(name,
+                                              callback_data=f'{name}') for name in
+                   ['Оксана', 'Женя', 'Алёна', 'Омаж']])
+    keyboard.row(types.InlineKeyboardButton('🔙 назад', callback_data='back_to_settings'))
     return keyboard
 
 
@@ -62,30 +82,18 @@ def custom_url_buttons(btn_names: dict):
     return keyboard
 
 
-def remove_keyboard():
-    keyboard = types.ReplyKeyboardRemove()
+def markup_keyboard():
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True,
+                                                 one_time_keyboard=False)
+    keyboard.row('/start', '/help')
+    keyboard.row('Настройки')
+    # keyboard.row('Скрыть')
     return keyboard
 
 
-rus = re.compile("[а-яА-Я]+")  # нужно для проверки языка сообщения.
-
-Vladimir = 208470137
-PATH_TO_DATA = './data/'
-
-default_params = {'lang': 'ru-RU',
-                  'voice': 'filipp'}
-params = None
-voices = {'Филипп': 'filipp', 'Омаж': 'omazh', 'Захар': 'zahar', 'Эрмиль': 'ermil',
-          'Оксана': 'oksana', 'Женя': 'jane', 'Алёна': 'alena'}
-
-you_can_help = """
-Можешь поддержать проект чеканной монетой или принять участие в разработке
-\nСо Сбербанка на Яндекс\.Деньги без комиссии
-\n[Яндекс\.Деньги: 410014485115217](https://money.yandex.ru/to/410014485115217)
-\nАльфа Банк: 5559 4937 1870 2583
-"""
-
-bot.send_message(Vladimir, 'Starting...')
+def remove_keyboard():
+    keyboard = types.ReplyKeyboardRemove()
+    return keyboard
 
 
 # HANDLERS
@@ -100,36 +108,33 @@ def reply_on_exception(message, exception):
 # Commands handlers
 @bot.message_handler(commands=['start'])
 def start_bot(message: Message):
-    print(f'/start from id: {message.from_user.id}')
+    print(f'/start from user: {message.from_user}')
     bot.send_message(message.chat.id, f'\nПривет, {message.chat.first_name}!'
                                       f'\nТы можешь отправить мне текстовые или голосовые сообщения',
                      reply_markup=default_keyboard())
+    # TODO: Below methods MUST write to DB! (in order to save and use User's preferences correctly)
     add_start_user(message)
+    user_list.append(message.from_user)
 
 
 @bot.message_handler(commands=['help'])
-def start_bot(message: Message):
+def show_help(message: Message):
     print(f'/help from id: {message.from_user.id}')
     bot.send_message(message.chat.id, f'Бот находится в разработке.\nБудет классно, если ты поможешь 😊',
                      reply_markup=custom_url_buttons(
-                         {'Хочу помочь!': 'https://money.yandex.ru/to/410014485115217',
-                          'Документация': 'https://cloud.yandex.ru/docs/speechkit/tts/#voices',
-                          # 'GitHub': 'https://t.me/kulyashov',
-                          'Ответы на вопросы': 'https://t.me/kulyashov'}))
-
-
-@bot.message_handler(func=lambda message: message.text in voices.keys())
-def change_voice(message: Message):
-    print(f'User {message.from_user.id} chooses {voices[message.text]} voice')
-    global params
-    params = {'voice': voices[message.text]}
-    # bot.send_voice(message.chat.id, open(PATH_TO_DATA + f'voice_{voices[message.text]}.ogg', 'rb'))
+                         {'Доступные голоса': 'https://cloud.yandex.ru/docs/speechkit/tts/#voices',
+                          'Описание методов': 'https://cloud.yandex.ru/docs/speechkit/tts/request',
+                          'Хочу помочь!': 'https://money.yandex.ru/to/410014485115217',
+                          'Ответы на вопросы': 'https://t.me/kulyashov'}), disable_web_page_preview=True)
 
 
 @bot.message_handler(func=lambda message: message.text == 'Настройки')
 def show_settings(message: Message):
     bot.send_message(message.chat.id,
-                     'Здесь можно поменять некоторые настройки',
+                     'Здесь можно поменять некоторые настройки\n'
+                     f'Сейчас выбран голос '
+                     f'"{inv_voices[params["voice"]] if params else inv_voices[default_params["voice"]]}"'
+                     f'\nУ меня много голосов! Выбирай!',
                      reply_markup=settings_keyboard())
 
 
@@ -192,14 +197,32 @@ def handle_text(message: Message):
 
 
 # CALLBACKS
+@bot.callback_query_handler(func=lambda callback: callback.data in voices.keys())
+def change_voice(callback: CallbackQuery):
+    bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text=f'Выбран голос: "{callback.data}"')
+    print(f'User {callback.from_user.first_name} chooses {voices[callback.data]} voice')
+    global params
+    params = {'voice': voices[callback.data]}
+    bot.edit_message_text(text=f'Сейчас выбран голос '
+                               f'"{inv_voices[params["voice"]] if params else inv_voices[default_params["voice"]]}"',
+                          chat_id=callback.message.chat.id,
+                          message_id=callback.message.message_id,
+                          reply_markup=voices_keyboard())
+    # bot.send_voice(message.chat.id, open(PATH_TO_DATA + f'voice_{voices[message.text]}.ogg', 'rb'))
+
+
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_handling(callback: CallbackQuery):
     print(f'Callback from {callback.from_user.id}:\n', callback.data)
     if 'btn_1' in callback.data:
-        bot.send_voice(callback.from_user.id, open(PATH_TO_DATA + 'hello.ogg', 'rb'))
         bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='Здравствуй!')
+        bot.send_voice(callback.from_user.id, open(PATH_TO_DATA + 'hello.ogg', 'rb'))
 
-    elif 'btn_2' in callback.data:
+    elif 'help' in callback.data:
+        show_help(callback.message)
+
+    elif 'about' in callback.data:
+        bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
         bot.send_voice(callback.from_user.id, open(PATH_TO_DATA + 'what_can_bot_do.ogg', 'rb'))
         # bot.send_video(callback.message.chat.id, open(PATH_TO_DATA + 'thanks.mp4', 'rb'))
         bot.edit_message_text(chat_id=callback.message.chat.id,
@@ -207,12 +230,11 @@ def callback_handling(callback: CallbackQuery):
                               text=you_can_help,
                               reply_markup=default_keyboard(),
                               parse_mode='MarkdownV2')
-        bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
 
     elif 'settings' in callback.data:
         bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
         try:
-            bot.edit_message_text(text=r'Здесь можно поменять некоторые настройки',
+            bot.edit_message_text(text='Здесь можно поменять настройки голоса и произношения',
                                   chat_id=callback.from_user.id,
                                   message_id=callback.message.message_id,
                                   reply_markup=settings_keyboard(),
@@ -230,9 +252,12 @@ def callback_handling(callback: CallbackQuery):
                               reply_markup=default_keyboard())
     elif 'choose_voice' in callback.data:
         bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
-        bot.send_message(chat_id=callback.message.chat.id,
-                         text='У меня много голосов! Выбирай!',
-                         reply_markup=voices_keyboard())
+        bot.edit_message_text(chat_id=callback.message.chat.id,
+                              message_id=callback.message.message_id,
+                              text='Здесь можно поменять некоторые настройки\n'
+                                   f'Сейчас выбран голос '
+                                   f'"{inv_voices[params["voice"]] if params else inv_voices[default_params["voice"]]}"',
+                              reply_markup=voices_keyboard())
     elif 'choose_language' in callback.data:
         bot.answer_callback_query(callback_query_id=callback.id, show_alert=True, text='Пока не работает :(')
 
