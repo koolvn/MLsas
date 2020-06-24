@@ -241,4 +241,4 @@ def callback_handling(callback: CallbackQuery):
 ######################## END OF BOT LOGIC ########################
 ##################################################################
 
-bot.polling()
+bot.polling(none_stop=True)
