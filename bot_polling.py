@@ -228,8 +228,9 @@ def callback_handling(callback: CallbackQuery):
         bot.edit_message_text(chat_id=callback.message.chat.id,
                               message_id=callback.message.message_id,
                               text=you_can_help,
-                              reply_markup=default_keyboard(),
-                              parse_mode='MarkdownV2')
+                              parse_mode='MarkdownV2',
+                              disable_web_page_preview=True,
+                              reply_markup=default_keyboard())
 
     elif 'settings' in callback.data:
         bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
