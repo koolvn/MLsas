@@ -2,9 +2,8 @@ import telebot
 from _secret import bot_token
 from bot_logic import bot_logic
 
-API_TOKEN = bot_token
 
-bot = telebot.TeleBot(API_TOKEN)
+bot = telebot.TeleBot(bot_token)
 
 _ = bot_logic(bot)
 

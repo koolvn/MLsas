@@ -13,6 +13,7 @@ from telebot.types import User, Message, CallbackQuery, InlineKeyboardMarkup, \
 
 def bot_logic(bot):
     if not path.exists('tg_users.csv'):
+        print('Creating storage...')
         pd.DataFrame(columns=['start_dt', 'id', 'username']).to_csv('tg_users.csv', index=False)
 
     rus = re.compile('[а-яА-Я]+')  # нужно для проверки языка сообщения.
@@ -59,9 +60,9 @@ def bot_logic(bot):
                 print(f'Added: {self.__repr__()}')
 
         def save_params(self):
-            bot_users = self.check_in_users(get_updated=False)
+            bot_users = self.check_in_users(get_updated=False).set_index('id')
             bot_users.loc[self.id, 'params'] = str(self.params)
-            bot_users.to_csv('tg_users.csv', index=False)
+            bot_users.to_csv('tg_users.csv')
 
         def __repr__(self):
             return f'BotUser: @{self.username}, name: {self.first_name}, id:{self.id}'
@@ -222,7 +223,6 @@ def bot_logic(bot):
                                   text=f'Выбран голос: "{callback.data}"')
         print(f'User {callback.from_user.first_name} chooses {voices[callback.data]} voice')
         user.params['voice'] = voices[callback.data]
-
         if voices[callback.data] == 'jane':
             user.params['emotion'] = 'evil'
 
