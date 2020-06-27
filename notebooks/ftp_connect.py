@@ -1,5 +1,5 @@
 from ftplib import FTP
-from ftp_login import login, password, HOST
+from notebooks.ftp_login import login, password, HOST
 
 
 def receive_file(remote_path, filename, local_path='data/'):

@@ -1,0 +1,16 @@
+[Unit]
+Description=Telegram Bot Service
+After=multi-user.target
+After=syslog.target
+After=network.target
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=vladimir
+WorkingDirectory=/home/vladimir/python/
+ExecStart=/home/vladimir/anaconda3/bin/python /home/vladimir/python/bot.py
+StandardInput=tty-force
+
+[Install]
+WantedBy=multi-user.target

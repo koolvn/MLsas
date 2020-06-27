@@ -1,2 +1,2 @@
-index,id,first_name,is_bot,language_code,last_name,link_source,username
-0,208470137,Vladimir,0.0,ru,Kulyashov,,kulyashov
+start_dt,id,username,first_name,is_bot,language_code,last_name,link_source,params
+2020-06-27 09:00:54,208470137,kulyashov,Vladimir,0.0,ru,Kulyashov,owner,"{'lang': 'ru-RU', 'voice': 'alena'}"
