@@ -7,9 +7,9 @@ Conflicts=getty@tty1.service
 
 [Service]
 Type=simple
-User=vladimir
-WorkingDirectory=/home/vladimir/python/
-ExecStart=/home/vladimir/anaconda3/bin/python /home/vladimir/python/bot.py
+User=vovkaperm
+WorkingDirectory=/home/vovkaperm/MLsas/
+ExecStart=/usr/bin/ /home/vovkaperm/MLsas/bot_webhooks.py
 StandardInput=tty-force
 
 [Install]
