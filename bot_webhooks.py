@@ -6,7 +6,7 @@ from _secret import bot_token
 from aiohttp import web
 
 logger = telebot.logger
-telebot.logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 bot = telebot.TeleBot(bot_token)
 app = web.Application()
 
@@ -43,7 +43,8 @@ async def handle(request):
 
 app.router.add_post('/{token}/', handle)
 
-_ = bot_logic(bot)
+# Running bot's logic part (the bot actually)
+bot_logic(bot)
 
 # Remove webhook, it fails sometimes the set if there is a previous webhook
 bot.remove_webhook()

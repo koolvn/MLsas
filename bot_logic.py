@@ -1,6 +1,7 @@
 if __name__ == '__main__':
     print('This is a bot logic file. It can not be used separately!')
 
+import logging
 import watson_api as wtsn
 import yandex_api as yndx
 import pandas as pd
@@ -12,8 +13,17 @@ from telebot.types import User, Message, CallbackQuery, InlineKeyboardMarkup, \
 
 
 def bot_logic(bot):
+    logging.basicConfig(
+        filename='bot.log',
+        filemode='a',
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        level=logging.INFO)
+
+    def log(msg: str, log_lvl=20) -> None:
+        logging.log(level=log_lvl, msg=msg)
+
     if not path.exists('tg_users.csv'):
-        print('Creating storage...')
+        log('Creating storage...')
         pd.DataFrame(columns=['start_dt', 'id', 'username']).to_csv('tg_users.csv', index=False)
 
     rus = re.compile('[а-яА-Я]+')  # нужно для проверки языка сообщения.
@@ -57,7 +67,7 @@ def bot_logic(bot):
                 self.start_dt = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
                 bot_users = bot_users.append(pd.Series(vars(self)), ignore_index=True)
                 bot_users.to_csv('tg_users.csv', index=False)
-                print(f'Added: {self.__repr__()}')
+                log(f'Added: {self.__repr__()}')
 
         def save_params(self):
             bot_users = self.check_in_users(get_updated=False).set_index('id')
@@ -82,8 +92,10 @@ def bot_logic(bot):
         keyboard.add(about, settings, ssml, help_)
         return keyboard
 
-    def settings_keyboard():
+    def settings_keyboard(**kwargs):
         keyboard = InlineKeyboardMarkup()
+        if kwargs['from_id'] == Vladimir:
+            keyboard.add(InlineKeyboardButton('Bot Log', callback_data='bot_log'))
         keyboard.add(InlineKeyboardButton('Выбрать голос', callback_data='choose_voice'))
         keyboard.add(InlineKeyboardButton('Выбрать язык', callback_data='choose_language'))
         keyboard.row(InlineKeyboardButton('🔙 назад', callback_data='back'))
@@ -133,21 +145,23 @@ def bot_logic(bot):
                          text='Кажется у нас проблемы 😢 Попробуй ещё раз. П.С. я не умею озвучивать эмодзи',
                          reply_markup=custom_url_buttons({'Поддержка': 'https://t.me/kulyashov'}))
         bot.send_message(Vladimir,
-                         f'User {message.chat.id} had an issue.\nThere is a problem with @ML_pet_bot.\n{exception}')
+                         f'There is a problem with this bot.\nException text: {exception}\n'
+                         f'User: @{message.from_user.username} id:{message.from_user.id}\n'
+                         f'Message: {message.text}'
+                         )
 
     # Commands handlers
     @bot.message_handler(commands=['start'])
     def start_bot(message: Message):
         user = BotUser(link_source=message.text.split()[-1], **vars(message.from_user))
-        print(f'/start from {user.__repr__()}\n{message.text}')
-
+        log(f'/start from {user.__repr__()}\n{message.text}')
         bot.send_message(message.chat.id, f'\nПривет, {user.first_name}!'
                                           f'\nТы можешь отправить мне текстовые или голосовые сообщения',
                          reply_markup=default_keyboard())
 
     @bot.message_handler(commands=['help'])
     def show_help(message: Message):
-        print(f'/help from id: {message.from_user.id}')
+        log(f'/help from id: {message.from_user.id}')
         bot.send_message(message.chat.id, f'Бот находится в разработке.\nБудет классно, если ты поможешь 😊',
                          reply_markup=help_keyboard(), disable_web_page_preview=True)
 
@@ -157,22 +171,22 @@ def bot_logic(bot):
         bot.send_message(message.chat.id,
                          'Здесь можно поменять некоторые настройки\n'
                          f'Сейчас выбран голос {inv_voices[user.params["voice"]]}',
-                         reply_markup=settings_keyboard())
+                         reply_markup=settings_keyboard(from_id=user.id))
 
     # Message type handlers
     @bot.message_handler(content_types=['audio', 'voice'])
     def handle_audio(message: Message):
-        print(f'Received {message.content_type}'
-              f' from {message.from_user.first_name}'
-              f' @{message.from_user.username}'
-              f' ({message.from_user.id})')
+        log(f'Received {message.content_type}'
+            f' from {message.from_user.first_name}'
+            f' @{message.from_user.username}'
+            f' ({message.from_user.id})')
         file_type = None
         if message.voice:
             file_type = 'voice'
         elif message.audio:
             file_type = 'audio'
         else:
-            print('Message type unknown', message)
+            log(f'Message type unknown: {message}')
 
         bot.send_message(message.chat.id, 'Converting to text')
         file_id = message.json[file_type]['file_id']
@@ -191,10 +205,10 @@ def bot_logic(bot):
     @bot.message_handler(func=lambda message: message.text != 'Настройки', content_types=['text'])
     def handle_text(message: Message):
         user = BotUser(**vars(message.from_user))
-        print(f'Received {message.content_type}'
-              f' from {message.from_user.first_name}'
-              f' @{message.from_user.username}'
-              f' ({message.from_user.id})')
+        log(f'Received {message.content_type}'
+            f' from {message.from_user.first_name}'
+            f' @{message.from_user.username}'
+            f' ({message.from_user.id})')
 
         bot.send_message(message.chat.id, "Записываю...", reply_markup=markup_keyboard())
         bot.send_chat_action(message.from_user.id, 'record_audio')
@@ -210,9 +224,10 @@ def bot_logic(bot):
             bot.send_voice(message.chat.id, open(PATH_TO_DATA + 'tts_' + audio_file, 'rb'))
         except UnicodeEncodeError as e:
             print('Wrong character in message!\n', e)
+            log('Wrong character in message!\n' + str(e), logging.WARNING)
             reply_on_exception(message, e)
         except RuntimeError as e:
-            print(e)
+            log(str(e), logging.WARNING)
             reply_on_exception(message, e)
 
     # CALLBACKS
@@ -221,7 +236,7 @@ def bot_logic(bot):
         user = BotUser(**vars(callback.from_user))
         bot.answer_callback_query(callback_query_id=callback.id, show_alert=False,
                                   text=f'Выбран голос: "{callback.data}"')
-        print(f'User {callback.from_user.first_name} chooses {voices[callback.data]} voice')
+        log(f'User {callback.from_user.first_name} chooses {voices[callback.data]} voice')
         user.params['voice'] = voices[callback.data]
         if voices[callback.data] == 'jane':
             user.params['emotion'] = 'evil'
@@ -240,7 +255,7 @@ def bot_logic(bot):
     @bot.callback_query_handler(func=lambda callback: True)
     def callback_handling(callback: CallbackQuery):
         user = BotUser(**vars(callback.from_user))
-        print(f'Callback from {user.__repr__()}:\n', callback.data)
+        log(f'Callback from {user.__repr__()}:\n{callback.data}')
         if 'hello' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='Здравствуй!')
             bot.send_voice(callback.from_user.id, open(PATH_TO_DATA + 'hello.ogg', 'rb'))
@@ -253,7 +268,7 @@ def bot_logic(bot):
                                       message_id=callback.message.message_id,
                                       reply_markup=help_keyboard())
             except Exception as e:
-                print(e)
+                log(str(e), logging.WARNING)
                 show_help(callback.message)
 
         elif 'about' in callback.data:
@@ -273,13 +288,15 @@ def bot_logic(bot):
                 bot.edit_message_text(text='Здесь можно поменять настройки голоса и произношения',
                                       chat_id=callback.message.chat.id,
                                       message_id=callback.message.message_id,
-                                      reply_markup=settings_keyboard(),
+                                      reply_markup=settings_keyboard(from_id=user.id),
                                       parse_mode='MarkdownV2')
             except Exception as e:
-                print(e)
+                log(str(e), logging.WARNING)
                 bot.send_message(callback.message.chat.id,
                                  text='Здесь можно поменять настройки голоса и произношения',
-                                 reply_markup=settings_keyboard())
+                                 reply_markup=settings_keyboard(from_id=user.id))
+        elif 'bot_log' in callback.data:
+            bot.send_document(Vladimir, data=open('bot.log', 'rb'))
 
         elif 'back' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
