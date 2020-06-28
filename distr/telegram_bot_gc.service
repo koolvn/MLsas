@@ -1,5 +1,5 @@
 [Unit]
-Description=Telegram Bot Service
+Description=Telegram Bot GC Service
 After=multi-user.target
 After=syslog.target
 After=network.target
@@ -9,8 +9,10 @@ Conflicts=getty@tty1.service
 Type=simple
 User=vovkaperm
 WorkingDirectory=/home/vovkaperm/MLsas/
-ExecStart=/usr/bin/ /home/vovkaperm/MLsas/bot_webhooks.py
+ExecStart=/home/vovkaperm/miniconda3/bin/python -u /home/vovkaperm/MLsas/bot_webhooks.py
 StandardInput=tty-force
+RestartSec=10
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
