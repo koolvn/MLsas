@@ -297,6 +297,7 @@ def bot_logic(bot):
                                  reply_markup=settings_keyboard(from_id=user.id))
         elif 'bot_log' in callback.data:
             bot.send_document(Vladimir, data=open('bot.log', 'rb'))
+            bot.send_document(Vladimir, data=open('tg_users.csv', 'rb'))
 
         elif 'back' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
