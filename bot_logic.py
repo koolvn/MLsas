@@ -315,9 +315,10 @@ def bot_logic(bot):
                                  text='Здесь можно поменять настройки голоса и произношения',
                                  reply_markup=settings_keyboard(from_id=user.id))
         elif 'bot_log' in callback.data:
+            bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
             bot.send_document(Vladimir, data=open('bot.log', 'rb'))
-            # bot.send_document(Vladimir, data=pd.read_sql('select * from users',
-            #                                              user._connection).to_records())
+            bot.send_message(Vladimir, text=pd.read_sql('select * from users',
+                                                         user._connection).to_dict())
 
         elif 'back' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')

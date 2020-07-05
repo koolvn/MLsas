@@ -11,8 +11,7 @@ User=vovkaperm
 WorkingDirectory=/home/vovkaperm/MLsas/
 ExecStart=/usr/bin/python3 /home/vovkaperm/MLsas/bot_webhooks.py
 StandardInput=tty-force
-RestartSec=10
-Restart=always
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
