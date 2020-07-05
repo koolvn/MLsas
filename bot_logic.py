@@ -1,15 +1,27 @@
-if __name__ == '__main__':
-    print('This is a bot logic file. It can not be used separately!')
-
+import sqlite3
 import logging
 import watson_api as wtsn
 import yandex_api as yndx
 import pandas as pd
 import re
-import os.path as path
 from datetime import datetime
 from telebot.types import User, Message, CallbackQuery, InlineKeyboardMarkup, \
     InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+
+
+def post_sql_query(sql_query: str, connection: object, fetch: bool = False) -> str:
+    with connection as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute(sql_query)
+            conn.commit()
+            if fetch:
+                result = cursor.fetchall()
+                return result
+            else:
+                return 'Done!'
+        except Exception as e:
+            logging.log(level=logging.ERROR, msg=f'Database exception!\n{e}')
 
 
 def bot_logic(bot):
@@ -19,12 +31,12 @@ def bot_logic(bot):
         format='%(asctime)s - %(levelname)s - %(message)s',
         level=logging.INFO)
 
-    def log(msg: str, log_lvl=20) -> None:
+    def log(msg: str, log_lvl=logging.INFO) -> None:
         logging.log(level=log_lvl, msg=msg)
 
-    if not path.exists('tg_users.csv'):
-        log('Creating storage...')
-        pd.DataFrame(columns=['start_dt', 'id', 'username']).to_csv('tg_users.csv', index=False)
+    # if not path.exists('tg_users.csv'):
+    #     log('Creating storage...')
+    #     pd.DataFrame(columns=['start_dt', 'id', 'username']).to_csv('tg_users.csv', index=False)
 
     rus = re.compile('[а-яА-Я]+')  # нужно для проверки языка сообщения.
     Vladimir = 208470137
@@ -48,6 +60,7 @@ def bot_logic(bot):
     class BotUser(User):
         def __init__(self, id, is_bot, first_name, **kwargs):
             super().__init__(id, is_bot, first_name)
+            self._connection = sqlite3.connect('./data/bot.db')
             self.params = None
             self.start_dt = None
             for key, value in kwargs.items():
@@ -56,7 +69,7 @@ def bot_logic(bot):
             self.check_in_users()
 
         def check_in_users(self, get_updated=True):
-            bot_users = pd.read_csv('tg_users.csv')
+            bot_users = pd.read_sql('select * from users', self._connection)
             idx = list(bot_users.columns).index('id')
             if self.id in [x[idx] for x in bot_users.itertuples(index=False)]:
                 if get_updated:
@@ -65,14 +78,14 @@ def bot_logic(bot):
             else:
                 self.params = default_params
                 self.start_dt = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-                bot_users = bot_users.append(pd.Series(vars(self)), ignore_index=True)
-                bot_users.to_csv('tg_users.csv', index=False)
+                bot_users = bot_users.append(pd.Series(vars(self)).drop('_connection'), ignore_index=True)
+                bot_users.params = bot_users.params.astype(str)
+                bot_users.to_sql(name='users', con=self._connection, index=False, if_exists='append')
                 log(f'Added: {self.__repr__()}')
 
         def save_params(self):
-            bot_users = self.check_in_users(get_updated=False).set_index('id')
-            bot_users.loc[self.id, 'params'] = str(self.params)
-            bot_users.to_csv('tg_users.csv')
+            post_sql_query(f'''UPDATE users SET params = "{self.params}" WHERE id = "{self.id}"''',
+                           self._connection, fetch=True)
 
         def __repr__(self):
             return f'BotUser: @{self.username}, name: {self.first_name}, id:{self.id}'
@@ -214,9 +227,15 @@ def bot_logic(bot):
         bot.send_chat_action(message.from_user.id, 'record_audio')
         try:
             filename = datetime.now().strftime("%d-%b-%H-%M") + '-from-' + str(message.chat.id) + '.ogg'
+
+            sql = f"""INSERT INTO user_msgs(date_time, id, text, filename)
+                VALUES('{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', '{user.id}', '{message.text}', '{filename}')"""
+            post_sql_query(sql, user._connection)
             if rus.match(message.text):
                 audio_file = yndx.text_to_speech(text=message.text,
-                                                 output_filename=filename, params=user.params)
+                                                 output_filename=filename,
+                                                 params=user.params,
+                                                 save=False)
             else:
                 audio_file = wtsn.text_to_speech(text=message.text,
                                                  output_filename=filename)
@@ -297,7 +316,8 @@ def bot_logic(bot):
                                  reply_markup=settings_keyboard(from_id=user.id))
         elif 'bot_log' in callback.data:
             bot.send_document(Vladimir, data=open('bot.log', 'rb'))
-            bot.send_document(Vladimir, data=open('tg_users.csv', 'rb'))
+            # bot.send_document(Vladimir, data=pd.read_sql('select * from users',
+            #                                              user._connection).to_records())
 
         elif 'back' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
@@ -316,3 +336,7 @@ def bot_logic(bot):
 
         elif 'choose_language' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=True, text='Пока не работает :(')
+
+
+if __name__ == '__main__':
+    print('This is a bot logic file. It can not be used separately!')

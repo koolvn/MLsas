@@ -26,8 +26,8 @@ def text_to_speech(text='Hello world', output_filename='hello_world.ogg', params
         if resp.status_code != 200:
             raise RuntimeError("Invalid response received: code: %d, message: %s" % (resp.status_code, resp.text))
 
-        with open(PATH_TO_DATA + 'tts_' + output_filename, "wb+") as f:
-            f.write(resp.content)
+        with open(PATH_TO_DATA + 'tts_' + output_filename, "wb+") as sound_file:
+            sound_file.write(resp.content)
 
     output_txt_filename = output_filename.split('.')[0] + '.txt'
     if save:
