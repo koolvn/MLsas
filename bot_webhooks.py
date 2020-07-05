@@ -11,7 +11,7 @@ bot = telebot.TeleBot(bot_token)
 app = web.Application()
 
 # Telegram WebHooks
-WEBHOOK_HOST = '35.195.204.212'  # your cloud instance IP address
+WEBHOOK_HOST = 'ec2-13-48-31-15.eu-north-1.compute.amazonaws.com'  # your cloud instance IP address
 WEBHOOK_PORT = 8443  # 443, 80, 88 or 8443 (port need to be 'open')
 WEBHOOK_LISTEN = '0.0.0.0'  # In some VPS you may need to put here the IP addr
 
