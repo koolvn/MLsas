@@ -43,7 +43,7 @@ def bot_logic(bot):
     bot.send_message(Vladimir, 'Starting...')
     PATH_TO_DATA = './data/'
     default_params = {'lang': 'ru-RU',
-                      'voice': 'alena'}
+                      'voice': 'alena', 'speed': '0.8'}
     # Подробнее здесь https://cloud.yandex.ru/docs/speechkit/tts/request
 
     voices = {'Филипп': 'filipp', 'Омаж': 'omazh', 'Захар': 'zahar', 'Эрмиль': 'ermil',
@@ -167,6 +167,7 @@ def bot_logic(bot):
     @bot.message_handler(commands=['start'])
     def start_bot(message: Message):
         user = BotUser(link_source=message.text.split()[-1], **vars(message.from_user))
+        user.params.update(default_params)
         log(f'/start from {user.__repr__()}\n{message.text}')
         bot.send_message(message.chat.id, f'\nПривет, {user.first_name}!'
                                           f'\nТы можешь отправить мне текстовые или голосовые сообщения',
@@ -317,8 +318,9 @@ def bot_logic(bot):
         elif 'bot_log' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
             bot.send_document(Vladimir, data=open('bot.log', 'rb'))
-            bot.send_message(Vladimir, text=pd.read_sql('select * from users',
-                                                         user._connection).to_dict())
+            bot.send_message(Vladimir, text=str(pd.read_sql('select * from users', user._connection).to_dict(orient='records')))
+	    #bot.send_message(Vladimir, text=f"{pd.read_sql('select * from user_msgs',
+            #                                             user._connection).to_dict()}")
 
         elif 'back' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
