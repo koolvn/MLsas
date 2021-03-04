@@ -80,7 +80,8 @@ def bot_logic(bot):
                 self.start_dt = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
                 bot_users = bot_users.append(pd.Series(vars(self)).drop('_connection'), ignore_index=True)
                 bot_users.params = bot_users.params.astype(str)
-                bot_users.to_sql(name='users', con=self._connection, index=False, if_exists='append')
+                log(f'{bot_users}')
+                bot_users.to_sql(name='users', con=self._connection, index=False, if_exists='replace')
                 log(f'Added: {self.__repr__()}')
 
         def save_params(self):
