@@ -41,7 +41,7 @@ def speech_to_text(input_file: str, output_filename: str, auth=API_KEY):
     """ Принимает на вход имя звукового файла, который нужно распознать
         возвращает распознанный текст и файл с именем начинающимся на stt_
     """
-    url = 'https://tts.api.cloud.yandex.net/speech/v1/stt:recognize?topic=general&lang=ru-RU'
+    url = 'https://stt.api.cloud.yandex.net/speech/v1/stt:recognize'#?topic=general&lang=ru-RU'
 
     with open(PATH_TO_DATA + input_file, "rb") as f:
         data = f.read()
@@ -57,3 +57,4 @@ def speech_to_text(input_file: str, output_filename: str, auth=API_KEY):
             f.write(recognized_text)
 
     return resp, recognized_text
+
