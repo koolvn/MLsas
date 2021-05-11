@@ -2,6 +2,7 @@ from bot_logic import bot_logic
 import telebot
 import logging
 import ssl
+import os
 from _secret import bot_token
 from aiohttp import web
 
@@ -9,14 +10,16 @@ logger = telebot.logger
 logger.setLevel(logging.WARNING)
 bot = telebot.TeleBot(bot_token)
 app = web.Application()
-
+USER = os.environ.get('USER')
 # Telegram WebHooks
-WEBHOOK_HOST = '13.48.124.11'  # your cloud instance IP address
+WEBHOOK_HOST = '35.231.234.121'  # your cloud instance IP address
 WEBHOOK_PORT = 8443  # 443, 80, 88 or 8443 (port need to be 'open')
 WEBHOOK_LISTEN = '0.0.0.0'  # In some VPS you may need to put here the IP addr
 
-WEBHOOK_SSL_CERT = '/home/ubuntu/MLsas/certificates/webhook_cert.pem'  # Path to the ssl certificate
-WEBHOOK_SSL_PRIV = '/home/ubuntu/MLsas/certificates/webhook_pkey.pem'  # Path to the ssl private key
+# Path to the ssl certificate
+WEBHOOK_SSL_CERT = f'/home/{USER}/MLsas/certificates/webhook_cert.pem'
+# Path to the ssl private key
+WEBHOOK_SSL_PRIV = f'/home/{USER}/MLsas/certificates/webhook_pkey.pem'
 
 # Quick'n'dirty SSL certificate generation:
 #

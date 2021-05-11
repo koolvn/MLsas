@@ -7,9 +7,9 @@ Conflicts=getty@tty1.service
 
 [Service]
 Type=simple
-User=vovkaperm
-WorkingDirectory=/home/vovkaperm/MLsas/
-ExecStart=/usr/bin/python3 /home/vovkaperm/MLsas/bot_webhooks.py
+User=kulyashovv
+WorkingDirectory=/home/kulyashovv/MLsas/
+ExecStart=/usr/bin/python3 /home/kulyashovv/MLsas/bot_webhooks.py
 StandardInput=tty-force
 Restart=on-failure
 

@@ -7,9 +7,9 @@ Conflicts=getty@tty1.service
 
 [Service]
 Type=simple
-User=ubuntu
-WorkingDirectory=/home/ubuntu/MLsas/
-ExecStart=/usr/bin/python3 /home/ubuntu/MLsas/echo_bot.py
+User=kulyashovv
+WorkingDirectory=/home/kulyashovv/MLsas/
+ExecStart=/usr/bin/python3 /home/kulyashovv/MLsas/echo_bot.py
 StandardInput=tty-force
 Restart=on-failure
 
