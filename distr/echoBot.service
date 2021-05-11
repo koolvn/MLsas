@@ -1,0 +1,17 @@
+[Unit]
+Description=Echo Bot Service
+After=multi-user.target
+After=syslog.target
+After=network.target
+Conflicts=getty@tty1.service
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/MLsas/
+ExecStart=/usr/bin/python3 /home/ubuntu/MLsas/echo_bot.py
+StandardInput=tty-force
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
