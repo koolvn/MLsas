@@ -29,7 +29,7 @@ def bot_logic(bot):
         filename='bot.log',
         filemode='a',
         format='%(asctime)s - %(levelname)s - %(message)s',
-        level=logging.INFO)
+        level=logging.WARNING)
 
     def log(msg: str, log_lvl=logging.INFO) -> None:
         logging.log(level=log_lvl, msg=msg)
@@ -80,9 +80,9 @@ def bot_logic(bot):
                 self.start_dt = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
                 bot_users = bot_users.append(pd.Series(vars(self)).drop('_connection'), ignore_index=True)
                 bot_users.params = bot_users.params.astype(str)
-                log(f'{bot_users}')
+                log(f'{bot_users}', log_lvl=logging.WARNING)
                 bot_users.to_sql(name='users', con=self._connection, index=False, if_exists='replace')
-                log(f'Added: {self.__repr__()}')
+                log(f'Added: {self.__repr__()}', log_lvl=logging.WARNING)
 
         def save_params(self):
             post_sql_query(f'''UPDATE users SET params = "{self.params}" WHERE id = "{self.id}"''',
@@ -183,6 +183,7 @@ def bot_logic(bot):
     @bot.message_handler(func=lambda message: message.text == 'Настройки')
     def show_settings(message: Message):
         user = BotUser(**vars(message.from_user))
+        log(f'/settings from id: {message.from_user.id}')
         bot.send_message(message.chat.id,
                          'Здесь можно поменять некоторые настройки\n'
                          f'Сейчас выбран голос {inv_voices[user.params["voice"]]}',
@@ -201,7 +202,7 @@ def bot_logic(bot):
         elif message.audio:
             file_type = 'audio'
         else:
-            log(f'Message type unknown: {message}')
+            log(f'Message type unknown: {message}', log_lvl=logging.WARNING)
 
         bot.send_message(message.chat.id, 'Converting to text')
         file_id = message.json[file_type]['file_id']
@@ -223,7 +224,7 @@ def bot_logic(bot):
         log(f'Received {message.content_type}'
             f' from {message.from_user.first_name}'
             f' @{message.from_user.username}'
-            f' ({message.from_user.id})')
+            f' ({message.from_user.id})', log_lvl=logging.WARNING)
 
         bot.send_message(message.chat.id, "Записываю...", reply_markup=markup_keyboard())
         bot.send_chat_action(message.from_user.id, 'record_audio')
@@ -241,14 +242,14 @@ def bot_logic(bot):
             else:
                 audio_file = wtsn.text_to_speech(text=message.text,
                                                  output_filename=filename)
-
+#            bot.send_document(message.chat.id, open(PATH_TO_DATA + 'tts_' + audio_file, 'rb'))
             bot.send_voice(message.chat.id, open(PATH_TO_DATA + 'tts_' + audio_file, 'rb'))
         except UnicodeEncodeError as e:
             print('Wrong character in message!\n', e)
-            log('Wrong character in message!\n' + str(e), logging.WARNING)
+            log('Wrong character in message!\n' + str(e), logging.ERROR)
             reply_on_exception(message, e)
         except RuntimeError as e:
-            log(str(e), logging.WARNING)
+            log(str(e), logging.ERROR)
             reply_on_exception(message, e)
 
     # CALLBACKS
@@ -289,7 +290,7 @@ def bot_logic(bot):
                                       message_id=callback.message.message_id,
                                       reply_markup=help_keyboard())
             except Exception as e:
-                log(str(e), logging.WARNING)
+                log(str(e), logging.ERROR)
                 show_help(callback.message)
 
         elif 'about' in callback.data:
@@ -312,7 +313,7 @@ def bot_logic(bot):
                                       reply_markup=settings_keyboard(from_id=user.id),
                                       parse_mode='MarkdownV2')
             except Exception as e:
-                log(str(e), logging.WARNING)
+                log(str(e), logging.ERROR)
                 bot.send_message(callback.message.chat.id,
                                  text='Здесь можно поменять настройки голоса и произношения',
                                  reply_markup=settings_keyboard(from_id=user.id))

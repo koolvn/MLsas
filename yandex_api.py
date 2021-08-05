@@ -14,6 +14,8 @@ def text_to_speech(text='Hello world', output_filename='hello_world.ogg', params
     url = 'https://tts.api.cloud.yandex.net/speech/v1/tts:synthesize'
     payload = {'lang': 'ru-RU',
                'ssml': '<speak>\n' + text + '\n</speak>',
+#               'format': 'lpcm',
+#               'sampleRateHertz': 8000,
                'voice': 'filipp'}
 
     if params:
