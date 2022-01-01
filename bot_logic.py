@@ -1,12 +1,51 @@
 import sqlite3
 import logging
-import watson_api as wtsn
+import numpy as np
 import yandex_api as yndx
 import pandas as pd
-import re
+import cv2
+from Darknet import Detector
 from datetime import datetime
 from telebot.types import User, Message, CallbackQuery, InlineKeyboardMarkup, \
     InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
+
+cfg_pth = '/mnt/SSD/ForpostML/Projects/FatigueDetection/Models/FaceDetectorNet/net.cfg'
+weights_pth = '/mnt/SSD/ForpostML/Projects/FatigueDetection/Models/FaceDetectorNet/net.weights'
+labels_pth = '/mnt/SSD/ForpostML/Projects/FatigueDetection/Models/FaceDetectorNet/net.names'
+face_detector = Detector(cfg_pth, weights_pth, labels_pth)
+
+# nn = cv2.dnn.readNetFromTensorflow('/mnt/SSD/ForpostML/tmp/pruned_model.pb')
+nn = cv2.dnn.readNetFromONNX('/mnt/SSD/ForpostML/tmp/pruned_simplified.onnx')
+#nn= cv2.dnn.readNetFromTensorflow('/mnt/SSD/ForpostML/tmp/cv2_model.pb')
+output_layers = nn.getUnconnectedOutLayersNames()
+nn.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+nn.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+print('GPU(s) is available' if cv2.cuda.getCudaEnabledDeviceCount()
+      else 'No GPU(s) found')
+
+
+def get_nn_results(image):
+    image, faces = face_detector(image, draw_bboxes=False, extend_w_h=(1.1, 1.1))
+    results = {}
+    cropped_faces = []
+    for idx, face in enumerate(faces):
+        x, y, w, h, _, _ = face.astype(int)
+
+        face = image[y:y + h, x:x + w]
+        cropped_faces.append(face)
+        blob = cv2.dnn.blobFromImage(face,
+                                     1. / 255.,
+                                     (64, 64),
+                                     swapRB=True,
+                                     crop=False)
+        blob = np.transpose(blob, (0, 2, 3, 1))
+        nn.setInput(blob)
+        #_, proba = nn.forward(output_layers)
+        proba = nn.forward(output_layers)[0]
+        # print(proba)
+        results[f'face {idx + 1}'] = proba.squeeze()
+    print(results)
+    return image, results, cropped_faces
 
 
 def post_sql_query(sql_query: str, connection: object, fetch: bool = False) -> str:
@@ -34,28 +73,10 @@ def bot_logic(bot):
     def log(msg: str, log_lvl=logging.INFO) -> None:
         logging.log(level=log_lvl, msg=msg)
 
-    # if not path.exists('tg_users.csv'):
-    #     log('Creating storage...')
-    #     pd.DataFrame(columns=['start_dt', 'id', 'username']).to_csv('tg_users.csv', index=False)
-
-    rus = re.compile('[а-яА-Я]+')  # нужно для проверки языка сообщения.
     Vladimir = 208470137
     bot.send_message(Vladimir, 'Starting...')
     PATH_TO_DATA = './data/'
-    default_params = {'lang': 'ru-RU',
-                      'voice': 'alena', 'speed': '0.8'}
-    # Подробнее здесь https://cloud.yandex.ru/docs/speechkit/tts/request
-
-    voices = {'Филипп': 'filipp', 'Омаж': 'omazh', 'Захар': 'zahar', 'Эрмиль': 'ermil',
-              'Оксана': 'oksana', 'Женя': 'jane', 'Алёна': 'alena'}
-    inv_voices = {v: k for k, v in voices.items()}
-
-    you_can_help = """
-    Можешь поддержать проект чеканной монетой или принять участие в разработке
-    \nСо Сбербанка на Яндекс\.Деньги без комиссии
-    \n[Яндекс\.Деньги: 410014485115217](https://money.yandex.ru/to/410014485115217)
-    \nАльфа Банк: 5559 4937 1870 2583
-    """
+    default_params = {}
 
     class BotUser(User):
         def __init__(self, id, is_bot, first_name, **kwargs):
@@ -78,10 +99,12 @@ def bot_logic(bot):
             else:
                 self.params = default_params
                 self.start_dt = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-                bot_users = bot_users.append(pd.Series(vars(self)).drop('_connection'), ignore_index=True)
+                bot_users = bot_users.append(pd.Series(vars(self)).drop('_connection'),
+                                             ignore_index=True)
                 bot_users.params = bot_users.params.astype(str)
                 log(f'{bot_users}', log_lvl=logging.WARNING)
-                bot_users.to_sql(name='users', con=self._connection, index=False, if_exists='replace')
+                bot_users.to_sql(name='users', con=self._connection, index=False,
+                                 if_exists='replace')
                 log(f'Added: {self.__repr__()}', log_lvl=logging.WARNING)
 
         def save_params(self):
@@ -97,21 +120,19 @@ def bot_logic(bot):
     # Keyboards
     def default_keyboard():
         keyboard = InlineKeyboardMarkup()
-        ssml = InlineKeyboardButton(text='Что такое SSML?',
-                                    url='https://cloud.yandex.ru/docs/speechkit/tts/ssml')
         about = InlineKeyboardButton('Расскажи, что умеешь', callback_data='about')
-        settings = InlineKeyboardButton('Настройки', callback_data='settings')
-        help_ = InlineKeyboardButton('Помощь', callback_data='help')
+        # settings = InlineKeyboardButton('Настройки', callback_data='settings')
+        # help_ = InlineKeyboardButton('Помощь', callback_data='help')
         keyboard.row_width = 2
-        keyboard.add(about, settings, ssml, help_)
+        keyboard.add(about)
         return keyboard
 
     def settings_keyboard(**kwargs):
         keyboard = InlineKeyboardMarkup()
         if kwargs['from_id'] == Vladimir:
             keyboard.add(InlineKeyboardButton('Bot Log', callback_data='bot_log'))
-        keyboard.add(InlineKeyboardButton('Выбрать голос', callback_data='choose_voice'))
-        keyboard.add(InlineKeyboardButton('Выбрать язык', callback_data='choose_language'))
+        # keyboard.add(InlineKeyboardButton('Выбрать голос', callback_data='choose_voice'))
+        # keyboard.add(InlineKeyboardButton('Выбрать язык', callback_data='choose_language'))
         keyboard.row(InlineKeyboardButton('🔙 назад', callback_data='back'))
         return keyboard
 
@@ -134,10 +155,12 @@ def bot_logic(bot):
 
     def help_keyboard():
         keyboard = custom_url_buttons(
-            {'Доступные голоса': 'https://cloud.yandex.ru/docs/speechkit/tts/#voices',
-             'Описание методов': 'https://cloud.yandex.ru/docs/speechkit/tts/request',
-             'Хочу помочь!': 'https://money.yandex.ru/to/410014485115217',
-             'Ответы на вопросы': 'https://t.me/kulyashov'})
+            {
+                # 'Доступные голоса': 'https://cloud.yandex.ru/docs/speechkit/tts/#voices',
+                # 'Описание методов': 'https://cloud.yandex.ru/docs/speechkit/tts/request',
+                # 'Хочу помочь!': 'https://money.yandex.ru/to/410014485115217',
+                # 'Ответы на вопросы': 'https://t.me/kulyashov'
+            })
         keyboard.add(InlineKeyboardButton('🔙 назад', callback_data='back'))
         return keyboard
 
@@ -145,7 +168,7 @@ def bot_logic(bot):
         keyboard = ReplyKeyboardMarkup(resize_keyboard=True,
                                        one_time_keyboard=False)
         keyboard.row('/start', '/help')
-        keyboard.row('Настройки')
+        # keyboard.row('Настройки')
         # keyboard.row('Скрыть')
         return keyboard
 
@@ -171,25 +194,59 @@ def bot_logic(bot):
         user.params.update(default_params)
         log(f'/start from {user.__repr__()}\n{message.text}')
         bot.send_message(message.chat.id, f'\nПривет, {user.first_name}!'
-                                          f'\nТы можешь отправить мне текстовые или голосовые сообщения',
+                                          f'\nЭто бот для домашнего задания '
+                                          f'"Внедрение DL моделей в Production"\n'
+                                          f'Отправь мне фото - получишь результат',
                          reply_markup=default_keyboard())
 
     @bot.message_handler(commands=['help'])
     def show_help(message: Message):
         log(f'/help from id: {message.from_user.id}')
-        bot.send_message(message.chat.id, f'Бот находится в разработке.\nБудет классно, если ты поможешь 😊',
+        bot.send_message(message.chat.id,
+                         f'Это бот для домашнего задания "Внедрение в DL моделей в Production"',
                          reply_markup=help_keyboard(), disable_web_page_preview=True)
 
-    @bot.message_handler(func=lambda message: message.text == 'Настройки')
-    def show_settings(message: Message):
-        user = BotUser(**vars(message.from_user))
-        log(f'/settings from id: {message.from_user.id}')
-        bot.send_message(message.chat.id,
-                         'Здесь можно поменять некоторые настройки\n'
-                         f'Сейчас выбран голос {inv_voices[user.params["voice"]]}',
-                         reply_markup=settings_keyboard(from_id=user.id))
+    # @bot.message_handler(func=lambda message: message.text == 'Настройки')
+    # def show_settings(message: Message):
+    #     user = BotUser(**vars(message.from_user))
+    #     log(f'/settings from id: {message.from_user.id}')
+    #     bot.send_message(message.chat.id,
+    #                      'Здесь можно поменять некоторые настройки',
+    #                      reply_markup=settings_keyboard(from_id=user.id))
 
     # Message type handlers
+    @bot.message_handler(content_types=['photo'])
+    def handle_photo(message: Message):
+        # print(type(message.document))
+        # print(message.document)
+        received_file = message.json['photo'][-1]
+        # width, height = received_file['width'], received_file['height']
+        # print(received_file, '\n', f"width: {width}, height: {height}")
+        file_id = received_file['file_id']
+        received_file_path = bot.get_file(file_id).file_path
+        image_bytes = bot.download_file(received_file_path)
+        # print(len(image_bytes))
+        image = np.frombuffer(image_bytes, dtype=np.uint8)  # .reshape((height, width, 3))
+        image = cv2.imdecode(image, flags=1)
+        image, results, cropped_faces = get_nn_results(image)
+        bot_answer = '\n'.join([f'{face_idx} - {"Man" if proba < 0.5 else "Woman"} - sigmoid '
+                                f'output = {proba: .2f}'
+                                for face_idx, proba in results.items()])
+        bot_answer = f'Found {len(results)} face(s)\n' + bot_answer
+        bot.send_chat_action(message.chat.id, 'upload_photo')
+        r = list(results.values())
+        for i, face in enumerate(cropped_faces):
+            _, bts = cv2.imencode('.webp', face)
+            bts = bts.tostring()
+            bot.send_photo(message.chat.id, bts, caption=f'{"Man" if r[i] < 0.5 else "Woman"}: {r[i]}',
+                       )
+        # _, bts = cv2.imencode('.webp', image)
+        # bts = bts.tostring()
+        # bot.send_photo(message.chat.id, bts, caption=bot_answer,
+                       # reply_to_message_id=message.message_id
+        #               )
+        # bot.send_message(message.chat.id, bot_answer)
+
     @bot.message_handler(content_types=['audio', 'voice'])
     def handle_audio(message: Message):
         log(f'Received {message.content_type}'
@@ -207,12 +264,13 @@ def bot_logic(bot):
         bot.send_message(message.chat.id, 'Converting to text')
         file_id = message.json[file_type]['file_id']
         received_file_path = bot.get_file(file_id).file_path
-        filename = received_file_path.split('/')[1]
+        filename = received_file_path.split('/')[-1]
         with open(PATH_TO_DATA + filename, 'w+b') as file:
             file.write(bot.download_file(received_file_path))
 
         result, recognized_text = yndx.speech_to_text(input_file=filename,
-                                                      output_filename=filename.split('.')[0] + '.txt')
+                                                      output_filename=filename.split('.')[
+                                                                          0] + '.txt')
         if recognized_text:
             bot.send_message(message.chat.id, recognized_text)
         else:
@@ -226,80 +284,39 @@ def bot_logic(bot):
             f' @{message.from_user.username}'
             f' ({message.from_user.id})', log_lvl=logging.WARNING)
 
-        bot.send_message(message.chat.id, "Записываю...", reply_markup=markup_keyboard())
-        bot.send_chat_action(message.from_user.id, 'record_audio')
-        try:
-            filename = datetime.now().strftime("%d-%b-%H-%M") + '-from-' + str(message.chat.id) + '.ogg'
-
-            sql = f"""INSERT INTO user_msgs(date_time, id, text, filename)
-                VALUES('{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', '{user.id}', '{message.text}', '{filename}')"""
-            post_sql_query(sql, user._connection)
-            if rus.match(message.text):
-                audio_file = yndx.text_to_speech(text=message.text,
-                                                 output_filename=filename,
-                                                 params=user.params,
-                                                 save=False)
-            else:
-                audio_file = wtsn.text_to_speech(text=message.text,
-                                                 output_filename=filename)
-#            bot.send_document(message.chat.id, open(PATH_TO_DATA + 'tts_' + audio_file, 'rb'))
-            bot.send_voice(message.chat.id, open(PATH_TO_DATA + 'tts_' + audio_file, 'rb'))
-        except UnicodeEncodeError as e:
-            print('Wrong character in message!\n', e)
-            log('Wrong character in message!\n' + str(e), logging.ERROR)
-            reply_on_exception(message, e)
-        except RuntimeError as e:
-            log(str(e), logging.ERROR)
-            reply_on_exception(message, e)
+        bot.send_message(message.chat.id, "Я ничего не умею делать с текстом, "
+                                          "у меня лапки.\nПришли картинку",
+                         reply_markup=markup_keyboard())
 
     # CALLBACKS
-    @bot.callback_query_handler(func=lambda callback: callback.data in voices.keys())
-    def change_voice(callback: CallbackQuery):
-        user = BotUser(**vars(callback.from_user))
-        bot.answer_callback_query(callback_query_id=callback.id, show_alert=False,
-                                  text=f'Выбран голос: "{callback.data}"')
-        log(f'User {callback.from_user.first_name} chooses {voices[callback.data]} voice')
-        user.params['voice'] = voices[callback.data]
-        if voices[callback.data] == 'jane':
-            user.params['emotion'] = 'evil'
-
-        if voices[callback.data] == 'omazh':
-            user.params['emotion'] = 'good'
-
-        user.save_params()
-        bot.edit_message_text(text=f'Сейчас выбран голос "{inv_voices[user.params["voice"]]}"',
-                              chat_id=callback.message.chat.id,
-                              message_id=callback.message.message_id,
-                              reply_markup=voices_keyboard())
-
-        # bot.send_voice(message.chat.id, open(PATH_TO_DATA + f'voice_{voices[message.text]}.ogg', 'rb'))
-
     @bot.callback_query_handler(func=lambda callback: True)
     def callback_handling(callback: CallbackQuery):
         user = BotUser(**vars(callback.from_user))
         log(f'Callback from {user.__repr__()}:\n{callback.data}')
         if 'hello' in callback.data:
-            bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='Здравствуй!')
+            bot.answer_callback_query(callback_query_id=callback.id, show_alert=False,
+                                      text='Здравствуй!')
             bot.send_voice(callback.from_user.id, open(PATH_TO_DATA + 'hello.ogg', 'rb'))
 
         elif 'help' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
             try:
-                bot.edit_message_text(text=f'Бот находится в разработке.\nБудет классно, если ты поможешь 😊',
-                                      chat_id=callback.message.chat.id,
-                                      message_id=callback.message.message_id,
-                                      reply_markup=help_keyboard())
+                bot.edit_message_text(
+                    text=f'Бот находится в разработке.\nБудет классно, если ты поможешь 😊',
+                    chat_id=callback.message.chat.id,
+                    message_id=callback.message.message_id,
+                    reply_markup=help_keyboard())
             except Exception as e:
                 log(str(e), logging.ERROR)
                 show_help(callback.message)
 
         elif 'about' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
-            bot.send_voice(callback.from_user.id, open(PATH_TO_DATA + 'what_can_bot_do.ogg', 'rb'))
+            # bot.send_voice(callback.from_user.id, open(PATH_TO_DATA + 'what_can_bot_do.ogg', 'rb'))
             # bot.send_video(callback.message.chat.id, open(PATH_TO_DATA + 'thanks.mp4', 'rb'))
             bot.edit_message_text(chat_id=callback.message.chat.id,
                                   message_id=callback.message.message_id,
-                                  text=you_can_help,
+                                  text="Этот бот умеет находить лица на фото и определять пол",
                                   parse_mode='MarkdownV2',
                                   disable_web_page_preview=True,
                                   reply_markup=default_keyboard())
@@ -320,8 +337,9 @@ def bot_logic(bot):
         elif 'bot_log' in callback.data:
             bot.answer_callback_query(callback_query_id=callback.id, show_alert=False, text='')
             bot.send_document(Vladimir, data=open('bot.log', 'rb'))
-            bot.send_message(Vladimir, text=str(pd.read_sql('select * from users', user._connection).to_dict(orient='records')))
-	    #bot.send_message(Vladimir, text=f"{pd.read_sql('select * from user_msgs',
+            bot.send_message(Vladimir, text=str(
+                pd.read_sql('select * from users', user._connection).to_dict(orient='records')))
+            # bot.send_message(Vladimir, text=f"{pd.read_sql('select * from user_msgs',
             #                                             user._connection).to_dict()}")
 
         elif 'back' in callback.data:
@@ -340,7 +358,8 @@ def bot_logic(bot):
                                   reply_markup=voices_keyboard())
 
         elif 'choose_language' in callback.data:
-            bot.answer_callback_query(callback_query_id=callback.id, show_alert=True, text='Пока не работает :(')
+            bot.answer_callback_query(callback_query_id=callback.id, show_alert=True,
+                                      text='Пока не работает :(')
 
 
 if __name__ == '__main__':
