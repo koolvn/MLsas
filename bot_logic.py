@@ -238,7 +238,7 @@ def bot_logic(bot):
         for i, face in enumerate(cropped_faces):
             _, bts = cv2.imencode('.webp', face)
             bts = bts.tostring()
-            bot.send_photo(message.chat.id, bts, caption=f'{"Man" if r[i] < 0.5 else "Woman"}: {r[i]}',
+            bot.send_photo(message.chat.id, bts, caption=f'{"Man" if r[i] < 0.5 else "Woman"}: {r[i]: .2f} (sigmoid output)',
                        )
         # _, bts = cv2.imencode('.webp', image)
         # bts = bts.tostring()
