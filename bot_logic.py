@@ -1,28 +1,37 @@
 import sqlite3
+import base64
 import logging
 import numpy as np
 import yandex_api as yndx
 import pandas as pd
+import requests
 import cv2
 from Darknet import Detector
 from datetime import datetime
 from telebot.types import User, Message, CallbackQuery, InlineKeyboardMarkup, \
     InlineKeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
+host = 'localhost'
+rest_api_port = '8501'
+grpc_port = '8500'
+modelname = 'skillbox_hw'
+
 cfg_pth = '/mnt/SSD/ForpostML/Projects/FatigueDetection/Models/FaceDetectorNet/net.cfg'
 weights_pth = '/mnt/SSD/ForpostML/Projects/FatigueDetection/Models/FaceDetectorNet/net.weights'
 labels_pth = '/mnt/SSD/ForpostML/Projects/FatigueDetection/Models/FaceDetectorNet/net.names'
 face_detector = Detector(cfg_pth, weights_pth, labels_pth)
 
-# nn = cv2.dnn.readNetFromTensorflow('/mnt/SSD/ForpostML/tmp/pruned_model.pb')
-nn = cv2.dnn.readNetFromONNX('/mnt/SSD/ForpostML/tmp/pruned_simplified.onnx')
-#nn= cv2.dnn.readNetFromTensorflow('/mnt/SSD/ForpostML/tmp/cv2_model.pb')
-output_layers = nn.getUnconnectedOutLayersNames()
-nn.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
-nn.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
-print('GPU(s) is available' if cv2.cuda.getCudaEnabledDeviceCount()
-      else 'No GPU(s) found')
 
+def post_request(data) -> dict:
+    with requests.post(f'http://{host}:{rest_api_port}/v1/models/{modelname}:predict',
+                       headers={"content-type": "application/json"},
+                       data=data,
+                       ) as r:
+        if r.status_code != 200:
+            print(r.status_code, r.reason)
+            print(r.json())
+            return {'Error': r.status_code}
+    return r.json()
 
 def get_nn_results(image):
     image, faces = face_detector(image, draw_bboxes=False, extend_w_h=(1.1, 1.1))
@@ -33,17 +42,11 @@ def get_nn_results(image):
 
         face = image[y:y + h, x:x + w]
         cropped_faces.append(face)
-        blob = cv2.dnn.blobFromImage(face,
-                                     1. / 255.,
-                                     (64, 64),
-                                     swapRB=True,
-                                     crop=False)
-        blob = np.transpose(blob, (0, 2, 3, 1))
-        nn.setInput(blob)
-        #_, proba = nn.forward(output_layers)
-        proba = nn.forward(output_layers)[0]
-        # print(proba)
-        results[f'face {idx + 1}'] = proba.squeeze()
+        face_bytes = cv2.imencode('.jpeg', face)[1].tobytes()
+        face_bytes = base64.b64encode(face_bytes).decode('utf-8')
+        data = '{"instances" : [{"b64": "%s"}]}' % face_bytes
+        proba = post_request(data)['predictions']
+        results[f'face {idx + 1}'] = np.squeeze(proba)
     print(results)
     return image, results, cropped_faces
 
@@ -179,7 +182,7 @@ def bot_logic(bot):
     # HANDLERS
     def reply_on_exception(message, exception):
         bot.send_message(chat_id=message.chat.id,
-                         text='Кажется у нас проблемы 😢 Попробуй ещё раз. П.С. я не умею озвучивать эмодзи',
+                         text='Кажется у нас проблемы 😢 Попробуй ещё раз.',
                          reply_markup=custom_url_buttons({'Поддержка': 'https://t.me/kulyashov'}))
         bot.send_message(Vladimir,
                          f'There is a problem with this bot.\nException text: {exception}\n'
@@ -217,35 +220,30 @@ def bot_logic(bot):
     # Message type handlers
     @bot.message_handler(content_types=['photo'])
     def handle_photo(message: Message):
-        # print(type(message.document))
-        # print(message.document)
-        received_file = message.json['photo'][-1]
-        # width, height = received_file['width'], received_file['height']
-        # print(received_file, '\n', f"width: {width}, height: {height}")
-        file_id = received_file['file_id']
-        received_file_path = bot.get_file(file_id).file_path
-        image_bytes = bot.download_file(received_file_path)
-        # print(len(image_bytes))
-        image = np.frombuffer(image_bytes, dtype=np.uint8)  # .reshape((height, width, 3))
-        image = cv2.imdecode(image, flags=1)
-        image, results, cropped_faces = get_nn_results(image)
-        bot_answer = '\n'.join([f'{face_idx} - {"Man" if proba < 0.5 else "Woman"} - sigmoid '
-                                f'output = {proba: .2f}'
-                                for face_idx, proba in results.items()])
-        bot_answer = f'Found {len(results)} face(s)\n' + bot_answer
-        bot.send_chat_action(message.chat.id, 'upload_photo')
-        r = list(results.values())
-        for i, face in enumerate(cropped_faces):
-            _, bts = cv2.imencode('.webp', face)
-            bts = bts.tostring()
-            bot.send_photo(message.chat.id, bts, caption=f'{"Man" if r[i] < 0.5 else "Woman"}: {r[i]: .2f} (sigmoid output)',
+        try:
+            received_file = message.json['photo'][-1]
+            file_id = received_file['file_id']
+            received_file_path = bot.get_file(file_id).file_path
+            image_bytes = bot.download_file(received_file_path)
+            image = np.frombuffer(image_bytes, dtype=np.uint8)  # .reshape((height, width, 3))
+            image = cv2.imdecode(image, flags=1)
+            image, results, cropped_faces = get_nn_results(image)
+            bot_answer = '\n'.join([f'{face_idx} - {"Man" if proba < 0.5 else "Woman"} - sigmoid '
+                                    f'output = {proba: .2f}'
+                                    for face_idx, proba in results.items()])
+            bot_answer = f'Found {len(results)} face(s)\n' + bot_answer
+            bot.send_chat_action(message.chat.id, 'upload_photo')
+            r = list(results.values())
+            for i, face in enumerate(cropped_faces):
+                _, bts = cv2.imencode('.webp', face)
+                bts = bts.tostring()
+                bot.send_photo(message.chat.id, bts, caption=f'{"Man" if r[i] < 0.5 else "Woman"}: {r[i]: .2f} (sigmoid output)',
                        )
-        # _, bts = cv2.imencode('.webp', image)
-        # bts = bts.tostring()
-        # bot.send_photo(message.chat.id, bts, caption=bot_answer,
-                       # reply_to_message_id=message.message_id
-        #               )
-        # bot.send_message(message.chat.id, bot_answer)
+            if len(r) == 0:
+                bot.send_message(message.chat.id, "Лица не найдены :(")
+        except Exception as e:
+            print(e)
+            reply_on_exception(message, e)
 
     @bot.message_handler(content_types=['audio', 'voice'])
     def handle_audio(message: Message):
